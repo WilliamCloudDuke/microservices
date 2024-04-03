@@ -33,6 +33,8 @@ public class OrderService {
 
         List<String> skuCodes = order.getOrderLineItemsList().stream().map(OrderLineItems::getSkuCode).toList();
 
+        log.info("calling inventory service");
+
         //Call Inventory service, and place order if product is in stock
         // call the following endpoint @GetMapping
         //SYNC call
@@ -50,7 +52,7 @@ public class OrderService {
         if (Boolean.TRUE.equals(allProductsInStock)) {
             log.info("All items in the order are in stock!");
             orderRepository.save(order);
-            log.info("order was placed!");
+            log.info("order was placed! ");
         } else {
             throw new IllegalArgumentException("product is not in stock, please try again");
         }
