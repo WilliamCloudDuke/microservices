@@ -1,5 +1,6 @@
 package com.example.orderservice.service;
 
+import com.example.orderservice.dto.InventoryResponse;
 import com.example.orderservice.dto.OrderDto;
 import com.example.orderservice.dto.OrderLineItemsDto;
 import com.example.orderservice.dto.OrderRequest;
@@ -10,7 +11,9 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.web.reactive.function.client.WebClient;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -23,9 +26,35 @@ public class OrderService {
 
     private final OrderRepository orderRepository;
 
+    private final WebClient webClient;
+
     public void placeOrder(OrderRequest orderRequest) {
-        orderRepository.save(createOrder(orderRequest));
-        log.info("order was placed!");
+        Order order = createOrder(orderRequest);
+
+        List<String> skuCodes = order.getOrderLineItemsList().stream().map(OrderLineItems::getSkuCode).toList();
+
+        //Call Inventory service, and place order if product is in stock
+        // call the following endpoint @GetMapping
+        //SYNC call
+        InventoryResponse[] inventoryResponsesArray = webClient.get()
+                .uri("http://localhost:8082/api/inventory",
+                        uriBuilder -> uriBuilder.queryParam("skuCodes", skuCodes).build())
+                .retrieve()
+                .bodyToMono(InventoryResponse[].class)//as it is the return type of the endpoint
+                .block();
+
+        assert inventoryResponsesArray != null;
+        boolean allProductsInStock = Arrays.stream(inventoryResponsesArray).allMatch(InventoryResponse::isInStock);
+
+
+        if (Boolean.TRUE.equals(allProductsInStock)) {
+            log.info("All items in the order are in stock!");
+            orderRepository.save(order);
+            log.info("order was placed!");
+        } else {
+            throw new IllegalArgumentException("product is not in stock, please try again");
+        }
+
     }
 
 
