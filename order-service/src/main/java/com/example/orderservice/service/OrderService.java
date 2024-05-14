@@ -33,7 +33,7 @@ public class OrderService {
 
         List<String> skuCodes = order.getOrderLineItemsList().stream().map(OrderLineItems::getSkuCode).toList();
 
-        log.info("calling inventory service");
+        log.debug("calling inventory service");
 
         //Call Inventory service, and place order if product is in stock
         // call the following endpoint @GetMapping
